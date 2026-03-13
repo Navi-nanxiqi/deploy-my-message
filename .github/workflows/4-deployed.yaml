@@ -1,16 +1,49 @@
 name: Deployed
 on:
   issue_comment:
-    types:
-      - created
+    types: [created]
 jobs:
   deploy:
     if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/deploy') }}
-    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/4-deployed.yaml@project-deploy-my-message
-    with:
-      pr_num: ${{ github.event.issue.number }}
-      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
-      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
-      git_sync_user: ${{ vars.GIT_SYNC_USER }}
-      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
-    secrets: inherit
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Acknowledge deploy command
+        run: echo "Deploy command received for PR #${{ github.event.issue.number }}"
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Sync PR head to Gogs env-test
+        env:
+          PR_NUM: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOGS_REPO_URL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
+          GOGS_USER: ${{ secrets.GOGS_USER }}
+          GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
+        run: |
+          PR_JSON=$(curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUM}")
+          SHA=$(node -e "const d=JSON.parse(process.argv[1]);process.stdout.write(d.head.sha);" "$PR_JSON")
+          git fetch origin "$SHA"
+          git checkout --detach "$SHA"
+
+          if [ -n "$GOGS_USER" ] && [ -n "$GOGS_TOKEN" ]; then
+            AUTH_URL="http://${GOGS_USER}:${GOGS_TOKEN}@192.168.179.131:10880/nanxiqi/deploy-my-message.git"
+            git remote add gogs "$AUTH_URL" 2>/dev/null || git remote set-url gogs "$AUTH_URL"
+          else
+            git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
+          fi
+          git push --force gogs HEAD:env-test
+        shell: bash
+      - name: Validate chart template (dry-run)
+        run: |
+          if ! command -v helm >/dev/null 2>&1; then
+            curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          fi
+          helm template ./chart
