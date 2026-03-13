@@ -14,7 +14,7 @@ deployment:
       maxUnavailable: 25%
       maxSurge: 25%
   image:
-    repository: localhost:5000/deploy-my-message  # 镜像仓库地址 需变更为本地
+    repository: 192.168.179.131:5000/deploy-my-message  # 镜像仓库地址 需变更为本地
     tag: version-0.1.0
     pullPolicy: IfNotPresent
     imagePullSecrets: []
