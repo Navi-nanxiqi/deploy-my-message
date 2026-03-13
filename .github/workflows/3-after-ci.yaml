@@ -1,27 +1,37 @@
 name: After CI
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - master
+    types: [closed]
+    branches: [master]
 jobs:
   after-ci:
     if: github.event.pull_request.merged == true
-    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/3-after-ci.yaml@project-deploy-my-message
-    with:
-      pr_num: ${{ github.event.number }}
-      image_namespace: bieldatalab
-      image_region: ${{ vars.ALIYUN_ACR_REGION }}
-      image_instance_id: ${{ vars.ALIYUN_ACR_INSTANCE_ID }}
-      image_type: 'PRIVATE'
-      image_registry: ${{ vars.IMAGE_REGISTRY }}
-      image_username: ${{ vars.IMAGE_USERNAME }}
-      image_repo: ${{ github.event.repository.name }}
-      image_platform: 'linux/amd64'
-      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
-      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
-      git_sync_user: ${{ vars.GIT_SYNC_USER }}
-      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
-      vars_key: VUE_APP_APISERVER,VUE_APP_CASDOOR_URL,VUE_APP_ENV,VUE_APP_PUBLIC_PATH
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      IMAGE_REGISTRY: ${{ vars.IMAGE_REGISTRY || '192.168.179.131:5000' }}
+      IMAGE_NAME: ${{ github.event.repository.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install js-yaml
+        run: npm install js-yaml
+      - name: Read version from chart/values.yaml
+        id: readver
+        run: |
+          VERSION=$(node -e "const fs=require('fs');const yaml=require('js-yaml');const d=yaml.load(fs.readFileSync('chart/values.yaml','utf8'));process.stdout.write((d&&d.deployment&&d.deployment.image&&d.deployment.image.tag)||'version-unknown');")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Build and push TEST image
+        run: |
+          docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test .
+          docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test
+      - name: Build and push PROD image
+        run: |
+          docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
+          docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod

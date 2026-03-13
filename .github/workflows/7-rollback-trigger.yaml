@@ -1,12 +1,12 @@
 name: Rollback Trigger
 on:
   issues:
-    types:
-      - opened
+    types: [opened]
 jobs:
   rollback:
-    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/7-llm-rollback.yaml@project-deploy-my-message
-    with:
-      msg: ${{ github.event.issue.title }}
-      issue_num: ${{ github.event.issue.number }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show issue trigger info
+        run: |
+          echo "Issue #${{ github.event.issue.number }} opened: ${{ github.event.issue.title }}"
+          echo "Please trigger manual rollback workflow_dispatch with desired version."

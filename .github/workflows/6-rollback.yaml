@@ -7,12 +7,29 @@ on:
         required: true
 jobs:
   rollback:
-    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/6-rollback.yaml@project-deploy-my-message
-    with:
-      version: ${{ inputs.version }}
-      target_tag: current
-      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
-      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
-      git_sync_user: ${{ vars.GIT_SYNC_USER }}
-      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install js-yaml
+        run: npm install js-yaml
+      - name: Set VERSION
+        run: echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+      - name: Update chart/values.yaml tag
+        run: |
+          node -e "const fs=require('fs');const yaml=require('js-yaml');const f='chart/values.yaml';const d=yaml.load(fs.readFileSync(f,'utf8'));d.deployment=d.deployment||{};d.deployment.image=d.deployment.image||{};d.deployment.image.tag=process.env.VERSION;fs.writeFileSync(f,yaml.dump(d));"
+      - name: Commit changes to default branch
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git add chart/values.yaml
+          git commit -m "ci: rollback to $VERSION"
+          git push

@@ -1,16 +1,23 @@
 name: Deployed
 on:
   issue_comment:
-    types:
-      - created
+    types: [created]
 jobs:
   deploy:
     if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/deploy') }}
-    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/4-deployed.yaml@project-deploy-my-message
-    with:
-      pr_num: ${{ github.event.issue.number }}
-      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
-      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
-      git_sync_user: ${{ vars.GIT_SYNC_USER }}
-      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acknowledge deploy command
+        run: echo "Deploy command received for PR #${{ github.event.issue.number }}"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Validate chart template (dry-run)
+        run: |
+          if ! command -v helm >/dev/null 2>&1; then
+            curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          fi
+          helm template ./chart
