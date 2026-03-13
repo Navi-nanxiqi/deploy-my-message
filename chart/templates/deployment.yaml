@@ -1,0 +1,95 @@
+{{ $globalValues := .Values }}
+{{- if .Values.deployment }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.global.fullnameOverride }}
+  {{- if .Values.global.namespaceOverride }}
+  namespace: {{ .Values.global.namespaceOverride }}
+  {{- end }}
+  {{- if .Values.deployment.labels }}
+  labels: {{ toYaml .Values.deployment.labels | nindent 4 }}
+  {{- end }}
+  {{- if .Values.deployment.annotations }}
+  annotations: {{ toYaml .Values.deployment.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  strategy: {{ toYaml .Values.deployment.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      datalab-app: {{ .Values.global.fullnameOverride }}
+  template:
+    metadata:
+      {{- if .Values.deployment.pod.annotations }}
+      annotations: {{ toYaml .Values.deployment.pod.annotations | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- $defaultLabels := dict "datalab-app" .Values.global.fullnameOverride }}
+        {{- $mergedLabels := merge .Values.deployment.pod.labels $defaultLabels }}
+        {{- toYaml $mergedLabels | nindent 8 }}
+    spec:
+      {{- if .Values.deployment.image.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml .Values.deployment.image.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: app
+          {{- if .Values.global.frontendEnv }}
+          image: {{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}-{{ .Values.global.frontendEnv }}
+          {{- else}}
+          image: {{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.env }}
+          env: {{ toYaml .Values.deployment.pod.container.env | nindent 12 }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
+          {{- if .Values.service.ports }}
+          ports:
+          {{- range .Values.service.ports }}
+            - name: {{ .name | default "http" }}
+              containerPort: {{ .targetPort }}
+              protocol: {{ .protocol | default "TCP" }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.resources }}
+          resources: {{ toYaml .Values.deployment.pod.container.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.volumeMounts }}
+          volumeMounts: {{ toYaml .Values.deployment.pod.container.volumeMounts | nindent 12 }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.envFrom }}
+          envFrom: {{ toYaml .Values.deployment.pod.container.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.livenessProbe }}
+          livenessProbe: {{ toYaml .Values.deployment.pod.container.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.readinessProbe }}
+          readinessProbe: {{ toYaml .Values.deployment.pod.container.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.deployment.pod.container.startupProbe }}
+          startupProbe: {{ toYaml .Values.deployment.pod.container.startupProbe | nindent 12 }}
+          {{- end }}
+      {{- if .Values.global.nodeSelector }}
+      nodeSelector: {{ toYaml .Values.global.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.deployment.pod.affinity }}
+      affinity: {{ toYaml .Values.deployment.pod.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.deployment.pod.tolerations }}
+      tolerations: {{ toYaml .Values.deployment.pod.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.deployment.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- range .Values.deployment.topologySpreadConstraints }}
+        - maxSkew: {{ .maxSkew }}
+          topologyKey: {{ .topologyKey }}
+          whenUnsatisfiable: {{ .whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              datalab-app: {{ $globalValues.global.fullnameOverride }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.deployment.pod.volumes }}
+      volumes: {{ toYaml .Values.deployment.pod.volumes | nindent 8 }}
+      {{- end }}
+{{- end }}

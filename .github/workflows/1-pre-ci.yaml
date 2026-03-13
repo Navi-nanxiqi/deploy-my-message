@@ -1,0 +1,10 @@
+name: Pre CI
+on:
+  pull_request:
+    types:
+      - opened
+jobs:
+  pre-ci:
+    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/1-pre-ci.yaml@project-deploy-my-message
+    with:
+      pr_num: ${{ github.event.number }}

@@ -1,0 +1,27 @@
+name: After CI
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+jobs:
+  after-ci:
+    if: github.event.pull_request.merged == true
+    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/3-after-ci.yaml@project-deploy-my-message
+    with:
+      pr_num: ${{ github.event.number }}
+      image_namespace: bieldatalab
+      image_region: ${{ vars.ALIYUN_ACR_REGION }}
+      image_instance_id: ${{ vars.ALIYUN_ACR_INSTANCE_ID }}
+      image_type: 'PRIVATE'
+      image_registry: ${{ vars.IMAGE_REGISTRY }}
+      image_username: ${{ vars.IMAGE_USERNAME }}
+      image_repo: ${{ github.event.repository.name }}
+      image_platform: 'linux/amd64'
+      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
+      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
+      git_sync_user: ${{ vars.GIT_SYNC_USER }}
+      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
+      vars_key: VUE_APP_APISERVER,VUE_APP_CASDOOR_URL,VUE_APP_ENV,VUE_APP_PUBLIC_PATH
+    secrets: inherit

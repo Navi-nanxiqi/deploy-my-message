@@ -1,0 +1,12 @@
+name: Rollback Trigger
+on:
+  issues:
+    types:
+      - opened
+jobs:
+  rollback:
+    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/7-llm-rollback.yaml@project-deploy-my-message
+    with:
+      msg: ${{ github.event.issue.title }}
+      issue_num: ${{ github.event.issue.number }}
+    secrets: inherit

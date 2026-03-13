@@ -1,0 +1,15 @@
+name: Before CI
+on:
+  pull_request_review:
+    types:
+      - submitted
+jobs:
+  before-ci:
+    if: ${{ github.event.review.state == 'approved' }}
+    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/2-before-ci.yaml@project-deploy-my-message
+    with:
+      pr_url: ${{ github.event.review.pull_request_url }}
+      version: '${{ github.event.review.body }}'
+      chart_tag_path: .deployment.image.tag
+      chart_value_path: chart/values.yaml
+      open_gate_name: Merge Gate

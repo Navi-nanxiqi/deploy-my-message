@@ -1,0 +1,55 @@
+global:
+  frontendEnv: ""
+  fullnameOverride: deploy-my-message
+  namespaceOverride: ""
+  nodeSelector: {}
+
+deployment:
+  labels: {}
+  annotations: {}
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  image:
+    repository: localhost:5000/deploy-my-message  # 镜像仓库地址 需变更为本地
+    tag: version-0.1.0
+    pullPolicy: IfNotPresent
+    imagePullSecrets: []
+  pod:
+    annotations: {}
+    labels: {}
+    affinity: {}
+    tolerations: []
+    volumes: []
+    container:
+      env: {}
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      volumeMounts: []
+      envFrom: []
+      livenessProbe: {}
+      readinessProbe: {}
+      startupProbe: {}
+  topologySpreadConstraints: []
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+
+ingress:
+  className: nginx
+  annotations: {}
+  paths:
+    - path: /deploy-my-message(/|$)(.*)
+      pathType: Prefix
