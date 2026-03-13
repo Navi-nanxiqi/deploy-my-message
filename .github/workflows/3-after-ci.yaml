@@ -6,12 +6,13 @@ on:
 jobs:
   after-ci:
     if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
     env:
-      IMAGE_REGISTRY: ${{ vars.IMAGE_REGISTRY || '192.168.179.131:5000' }}
-      IMAGE_NAME: ${{ github.event.repository.name }}
+      IMAGE_REGISTRY: 192.168.179.131:5000
+      IMAGE_NAME: deploy-my-message
+      GOGS_REPO_URL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,3 +36,16 @@ jobs:
         run: |
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
+      - name: Sync to Gogs (master/current)
+        env:
+          GOGS_USER: ${{ secrets.GOGS_USER }}
+          GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
+        run: |
+          if [ -n "$GOGS_USER" ] && [ -n "$GOGS_TOKEN" ]; then
+            AUTH_URL="http://${GOGS_USER}:${GOGS_TOKEN}@192.168.179.131:10880/nanxiqi/deploy-my-message.git"
+            git remote add gogs "$AUTH_URL" 2>/dev/null || git remote set-url gogs "$AUTH_URL"
+          else
+            git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
+          fi
+          git push --force gogs HEAD:master
+          git push --force gogs HEAD:current
