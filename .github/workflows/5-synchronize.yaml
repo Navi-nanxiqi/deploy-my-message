@@ -1,0 +1,10 @@
+name: Synchronize
+on:
+  pull_request:
+    types:
+      - synchronize
+jobs:
+  pre-ci:
+    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/5-synchronize.yaml@project-deploy-my-message
+    with:
+      pr_num: ${{ github.event.number }}

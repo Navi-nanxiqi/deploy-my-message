@@ -1,0 +1,18 @@
+name: Rollback Process
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to rollback'
+        required: true
+jobs:
+  rollback:
+    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/6-rollback.yaml@project-deploy-my-message
+    with:
+      version: ${{ inputs.version }}
+      target_tag: current
+      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
+      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
+      git_sync_user: ${{ vars.GIT_SYNC_USER }}
+      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
+    secrets: inherit

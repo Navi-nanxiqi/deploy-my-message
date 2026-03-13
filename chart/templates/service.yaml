@@ -1,0 +1,21 @@
+{{- if .Values.service }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.global.fullnameOverride }}
+  {{- if .Values.global.namespaceOverride }}
+  namespace: {{ .Values.global.namespaceOverride }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    datalab-app: {{ .Values.global.fullnameOverride }}
+  {{- if .Values.service.ports }}
+  ports:
+  {{- range .Values.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: {{ .protocol | default "TCP" }}
+  {{- end }}
+  {{- end }}
+{{- end }}
