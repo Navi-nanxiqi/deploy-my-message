@@ -7,12 +7,43 @@ on:
         required: true
 jobs:
   rollback:
-    uses: BIEL-Datalab/deployments-ci-center/.github/workflows/6-rollback.yaml@project-deploy-my-message
-    with:
-      version: ${{ inputs.version }}
-      target_tag: current
-      gogs_base_url: ${{ vars.GOGS_BASE_URL }}
-      gogs_organization: ${{ vars.GOGS_ORGANIZATION }}
-      git_sync_user: ${{ vars.GIT_SYNC_USER }}
-      git_sync_target_user: ${{ vars.GIT_SYNC_TARGET_USER }}
-    secrets: inherit
+    runs-on: self-hosted
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install js-yaml
+        run: npm install js-yaml
+      - name: Set VERSION
+        run: echo "VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+      - name: Update chart/values.yaml tag
+        run: |
+          node -e "const fs=require('fs');const yaml=require('js-yaml');const f='chart/values.yaml';const d=yaml.load(fs.readFileSync(f,'utf8'));d.deployment=d.deployment||{};d.deployment.image=d.deployment.image||{};d.deployment.image.tag=process.env.VERSION;fs.writeFileSync(f,yaml.dump(d));"
+      - name: Commit changes to default branch
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git add chart/values.yaml
+          git commit -m "ci: rollback to $VERSION"
+          git push
+      - name: Sync rollback to Gogs (master/current)
+        env:
+          GOGS_REPO_URL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
+          GOGS_USER: ${{ secrets.GOGS_USER }}
+          GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
+        run: |
+          if [ -n "$GOGS_USER" ] && [ -n "$GOGS_TOKEN" ]; then
+            AUTH_URL="http://${GOGS_USER}:${GOGS_TOKEN}@192.168.179.131:10880/nanxiqi/deploy-my-message.git"
+            git remote add gogs "$AUTH_URL" 2>/dev/null || git remote set-url gogs "$AUTH_URL"
+          else
+            git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
+          fi
+          git push --force gogs HEAD:master
+          git push --force gogs HEAD:current
