@@ -35,7 +35,7 @@ function demoSiteSet() {
 }
 
 async function handleLogin() {
-    router.push("/login")
+    router.push("/login");
 }
 
 // 注册页面加载时获取最新配置
@@ -61,7 +61,7 @@ async function clickRegister() {
     try {
         const rspe = await http.post("/auth/register", { username: account.value, password: password.value });
         const rsp = rspe.data;
-        if (rsp.code != 200) {
+        if (rsp.code !== 200) {
             toast.error(rsp.msg);
         }
         else {
@@ -73,7 +73,7 @@ async function clickRegister() {
         }
     }
     catch (error) {
-        toast.error("注册失败，请检查网络连接");
+        toast.error("注册失败，请检查网络连接`${error}`");
     }
     finally {
         loading.value = false;
@@ -86,7 +86,7 @@ async function clickRegister() {
         <div class="w-full max-w-sm md:max-w-3xl">
             <div class="flex flex-col gap-6">
                 <Card class="overflow-hidden">
-                    <CardContent class="grid p-0"> 
+                    <CardContent class="grid p-0">
                         <!-- md:grid-cols-2 -->
                         <form class="p-6 md:p-8">
                             <div class="flex flex-col gap-6">
