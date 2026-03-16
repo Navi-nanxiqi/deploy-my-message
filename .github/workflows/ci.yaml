@@ -62,7 +62,6 @@ jobs:
           fi
 
   publish:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     needs: [check]
     runs-on: self-hosted
     permissions:
