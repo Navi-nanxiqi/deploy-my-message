@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   # 审核
@@ -98,7 +98,7 @@ jobs:
           test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
-      - name: Sync to Gogs (master/current)
+      - name: Sync to Gogs (main/current)
         shell: bash
         env:
           GOGS_USER: ${{ secrets.GOGS_USER }}
@@ -110,5 +110,5 @@ jobs:
           else
             git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
           fi
-          git push --force gogs HEAD:master
+          git push --force gogs HEAD:main
           git push --force gogs HEAD:current
