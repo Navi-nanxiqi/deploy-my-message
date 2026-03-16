@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: deploy-my-message-prod
+  namespace: argocd
+spec:
+  project: deploy-my-message
+  source:
+    repoURL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
+    targetRevision: main
+    path: chart
+    helm:
+      values: |
+        global:
+          frontendEnv: prod
+          fullnameOverride: deploy-my-message
+          namespaceOverride: deploy-my-message-prod
+        ingress:
+          paths:
+            - path: /deploy-my-message(/|$)(.*)
+              pathType: Prefix
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: deploy-my-message-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    syncOptions:
+      - CreateNamespace=true
