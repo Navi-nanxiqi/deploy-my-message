@@ -15,6 +15,10 @@ spec:
           frontendEnv: prod
           fullnameOverride: deploy-my-message
           namespaceOverride: deploy-my-message-prod
+        deployment:
+          image:
+            repository: 192.168.179.131:5000/deploy-my-message
+            pullPolicy: IfNotPresent
         ingress:
           paths:
             - path: /deploy-my-message(/|$)(.*)
