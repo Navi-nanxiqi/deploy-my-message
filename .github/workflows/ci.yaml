@@ -17,8 +17,36 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            src/web/package-lock.json
+      - name: Cleanup node_modules (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $paths = @('node_modules', 'src\web\node_modules')
+          foreach ($p in $paths) {
+            if (Test-Path $p) {
+              for ($i = 0; $i -lt 3; $i++) {
+                try {
+                  Remove-Item -Recurse -Force $p -ErrorAction Stop
+                  break
+                } catch {
+                  Start-Sleep -Seconds 2
+                  if ($i -eq 2) { throw }
+                }
+              }
+            }
+          }
+      - name: Cleanup node_modules (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          rm -rf node_modules src/web/node_modules || true
+      - name: Install dependencies (api+web)
+        run: npm run bootstrap
       - name: Lint API (optional)
         run: npm run lint:api --if-pre
       - name: install api and web
