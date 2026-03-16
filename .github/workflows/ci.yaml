@@ -1,0 +1,109 @@
+name: CI
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [master]
+
+jobs:
+  check:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            src/web/package-lock.json
+      - name: Cleanup node_modules (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $paths = @('node_modules', 'src\web\node_modules')
+          foreach ($p in $paths) {
+            if (Test-Path $p) {
+              for ($i = 0; $i -lt 3; $i++) {
+                try {
+                  Remove-Item -Recurse -Force $p -ErrorAction Stop
+                  break
+                } catch {
+                  Start-Sleep -Seconds 2
+                  if ($i -eq 2) { throw }
+                }
+              }
+            }
+          }
+      - name: Cleanup node_modules (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          rm -rf node_modules src/web/node_modules || true
+      - name: Install dependencies (api+web)
+        run: npm run bootstrap
+      - name: Lint API (optional)
+        run: npm run lint:api --if-present
+      - name: Build (optional)
+        run: npm run build --if-present
+      - name: Helm template (optional)
+        shell: bash
+        run: |
+          if [ -d chart ]; then
+            if ! command -v helm >/dev/null 2>&1; then
+              curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            fi
+            helm template ./chart >/dev/null
+          fi
+
+  publish:
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    needs: [check]
+    runs-on: self-hosted
+    permissions:
+      contents: read
+    env:
+      IMAGE_REGISTRY: 192.168.179.131:5000
+      IMAGE_NAME: deploy-my-message
+      GOGS_REPO_URL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read version from chart/values.yaml
+        shell: bash
+        run: |
+          VERSION=$(node -e "const fs=require('fs');const s=fs.readFileSync('chart/values.yaml','utf8');const m=s.match(/\\n\\s*tag:\\s*([^\\s#]+)/);process.stdout.write(m?m[1]:'version-unknown');")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Build and push TEST image
+        shell: bash
+        run: |
+          test -f Dockerfile
+          docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test .
+          docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test
+      - name: Build and push PROD image
+        shell: bash
+        run: |
+          test -f Dockerfile
+          docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
+          docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
+      - name: Sync to Gogs (master/current)
+        shell: bash
+        env:
+          GOGS_USER: ${{ secrets.GOGS_USER }}
+          GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
+        run: |
+          if [ -n "$GOGS_USER" ] && [ -n "$GOGS_TOKEN" ]; then
+            AUTH_URL="http://${GOGS_USER}:${GOGS_TOKEN}@192.168.179.131:10880/nanxiqi/deploy-my-message.git"
+            git remote add gogs "$AUTH_URL" 2>/dev/null || git remote set-url gogs "$AUTH_URL"
+          else
+            git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
+          fi
+          git push --force gogs HEAD:master
+          git push --force gogs HEAD:current

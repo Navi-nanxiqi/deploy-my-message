@@ -12,7 +12,8 @@
     "build:api": "nest build",
     "build:web": "npm run --prefix src/web build",
     "build": "npm run build:api && npm run build:web",
-    "lint:web": "npm run --prefix src/web lint"
+    "lint:web": "npm run --prefix src/web lint",
+    "bootstrap": "npm ci && npm ci --prefix src/web"
   },
   "dependencies": {
     "@casl/ability": "^6.7.5",
