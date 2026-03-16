@@ -4,9 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
+  # 审核
   check:
     runs-on: self-hosted
     permissions:
@@ -60,7 +61,7 @@ jobs:
             fi
             helm template ./chart >/dev/null
           fi
-
+  # 发布
   publish:
     if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     needs: [check]
@@ -76,6 +77,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Read version from chart/values.yaml
         shell: bash
         run: |
@@ -93,7 +98,7 @@ jobs:
           test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
-      - name: Sync to Gogs (master/current)
+      - name: Sync to Gogs (main/current)
         shell: bash
         env:
           GOGS_USER: ${{ secrets.GOGS_USER }}
@@ -105,5 +110,5 @@ jobs:
           else
             git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
           fi
-          git push --force gogs HEAD:master
+          git push --force gogs HEAD:main
           git push --force gogs HEAD:current
