@@ -1,11 +1,45 @@
-name: After CI
+name: CI
 on:
+  workflow_dispatch:
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened]
+  push:
     branches: [master]
+
 jobs:
-  after-ci:
-    if: github.event.pull_request.merged == true
+  check:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint API (optional)
+        run: npm run lint:api --if-present
+      - name: Lint Web (optional)
+        run: npm run lint:web --if-present
+      - name: Build (optional)
+        run: npm run build --if-present
+      - name: Helm template (optional)
+        shell: bash
+        run: |
+          if [ -d chart ]; then
+            if ! command -v helm >/dev/null 2>&1; then
+              curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+            fi
+            helm template ./chart >/dev/null
+          fi
+
+  publish:
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    needs: [check]
     runs-on: self-hosted
     permissions:
       contents: read
@@ -16,29 +50,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
-      - name: Install js-yaml
-        run: npm install js-yaml
+          fetch-depth: 0
       - name: Read version from chart/values.yaml
-        id: readver
+        shell: bash
         run: |
-          VERSION=$(node -e "const fs=require('fs');const yaml=require('js-yaml');const d=yaml.load(fs.readFileSync('chart/values.yaml','utf8'));process.stdout.write((d&&d.deployment&&d.deployment.image&&d.deployment.image.tag)||'version-unknown');")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          VERSION=$(node -e "const fs=require('fs');const s=fs.readFileSync('chart/values.yaml','utf8');const m=s.match(/\\n\\s*tag:\\s*([^\\s#]+)/);process.stdout.write(m?m[1]:'version-unknown');")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Build and push TEST image
+        shell: bash
         run: |
           test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test
       - name: Build and push PROD image
+        shell: bash
         run: |
           test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
       - name: Sync to Gogs (master/current)
+        shell: bash
         env:
           GOGS_USER: ${{ secrets.GOGS_USER }}
           GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
