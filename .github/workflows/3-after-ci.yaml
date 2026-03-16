@@ -30,10 +30,12 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Build and push TEST image
         run: |
+          test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test
       - name: Build and push PROD image
         run: |
+          test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
       - name: Sync to Gogs (master/current)

@@ -23,7 +23,7 @@ jobs:
       - name: Sync PR head to Gogs env-test
         env:
           PR_NUM: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           GOGS_REPO_URL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
           GOGS_USER: ${{ secrets.GOGS_USER }}
           GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
