@@ -19,8 +19,32 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            src/web/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Cleanup web node_modules (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $p = 'src\web\node_modules'
+          if (Test-Path $p) {
+            for ($i = 0; $i -lt 3; $i++) {
+              try {
+                Remove-Item -Recurse -Force $p -ErrorAction Stop
+                break
+              } catch {
+                Start-Sleep -Seconds 2
+                if ($i -eq 2) { throw }
+              }
+            }
+          }
+      - name: Cleanup web node_modules (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: |
+          rm -rf src/web/node_modules || true
       - name: Install web dependencies
         run: npm ci --prefix src/web
       - name: Lint API (optional)
@@ -29,15 +53,20 @@ jobs:
         run: npm run lint:web --if-present
       - name: Build (optional)
         run: npm run build --if-present
-      - name: Helm template (optional)
+      - name: Helm template (optional, non-Windows)
+        if: ${{ runner.os != 'Windows' }}
         shell: bash
         run: |
-          if [ -d chart ]; then
-            if ! command -v helm >/dev/null 2>&1; then
-              curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-            fi
+          if [ -d chart ] && command -v helm >/dev/null 2>&1; then
             helm template ./chart >/dev/null
           fi
+      - name: Helm template (optional, Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          if (Test-Path 'chart' -and (Get-Command helm -ErrorAction SilentlyContinue)) {
+            helm template .\chart | Out-Null
+          }
 
   publish:
     if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
@@ -54,24 +83,53 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Read version from chart/values.yaml
+      - name: Read version from chart/values.yaml (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
         shell: bash
         run: |
           VERSION=$(node -e "const fs=require('fs');const s=fs.readFileSync('chart/values.yaml','utf8');const m=s.match(/\\n\\s*tag:\\s*([^\\s#]+)/);process.stdout.write(m?m[1]:'version-unknown');")
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-      - name: Build and push TEST image
+      - name: Read version from chart/values.yaml (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $content = Get-Content -Raw 'chart/values.yaml'
+          $m = [regex]::Match($content, "`n\s*tag:\s*([^\s#]+)")
+          $version = if ($m.Success) { $m.Groups[1].Value } else { 'version-unknown' }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build and push TEST image (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
         shell: bash
         run: |
           test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-test
-      - name: Build and push PROD image
+      - name: Build and push TEST image (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'Dockerfile')) { throw 'Dockerfile not found' }
+          docker build -t "$env:IMAGE_REGISTRY/$env:IMAGE_NAME:$env:VERSION-test" .
+          docker push "$env:IMAGE_REGISTRY/$env:IMAGE_NAME:$env:VERSION-test"
+
+      - name: Build and push PROD image (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
         shell: bash
         run: |
           test -f Dockerfile
           docker build -t ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod .
           docker push ${IMAGE_REGISTRY}/${IMAGE_NAME}:${VERSION}-prod
-      - name: Sync to Gogs (master/current)
+      - name: Build and push PROD image (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'Dockerfile')) { throw 'Dockerfile not found' }
+          docker build -t "$env:IMAGE_REGISTRY/$env:IMAGE_NAME:$env:VERSION-prod" .
+          docker push "$env:IMAGE_REGISTRY/$env:IMAGE_NAME:$env:VERSION-prod"
+
+      - name: Sync to Gogs (master/current) (non-Windows)
+        if: ${{ runner.os != 'Windows' }}
         shell: bash
         env:
           GOGS_USER: ${{ secrets.GOGS_USER }}
@@ -83,5 +141,22 @@ jobs:
           else
             git remote add gogs "${GOGS_REPO_URL}" 2>/dev/null || git remote set-url gogs "${GOGS_REPO_URL}"
           fi
+          git push --force gogs HEAD:master
+          git push --force gogs HEAD:current
+      - name: Sync to Gogs (master/current) (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        env:
+          GOGS_USER: ${{ secrets.GOGS_USER }}
+          GOGS_TOKEN: ${{ secrets.GOGS_TOKEN }}
+        run: |
+          if ($env:GOGS_USER -and $env:GOGS_TOKEN) {
+            $authUrl = "http://$($env:GOGS_USER):$($env:GOGS_TOKEN)@192.168.179.131:10880/nanxiqi/deploy-my-message.git"
+            git remote add gogs $authUrl 2>$null
+            if ($LASTEXITCODE -ne 0) { git remote set-url gogs $authUrl }
+          } else {
+            git remote add gogs $env:GOGS_REPO_URL 2>$null
+            if ($LASTEXITCODE -ne 0) { git remote set-url gogs $env:GOGS_REPO_URL }
+          }
           git push --force gogs HEAD:master
           git push --force gogs HEAD:current
