@@ -2,6 +2,8 @@ FROM node:18-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
+COPY src/web/package.json src/web/package-lock.json ./src/web/
+RUN npm ci --prefix src/web
 
 FROM deps AS build
 WORKDIR /app
