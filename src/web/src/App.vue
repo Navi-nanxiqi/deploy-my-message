@@ -10,7 +10,7 @@ const router = useRouter();
 async function handelSession() {
     const loading = await http.get("/auth/session");
     const data = loading.data.data.data;
-    // console.log(data);
+    console.log(data);
     if (data) {
         router.push("/");
     }
