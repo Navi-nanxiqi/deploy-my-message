@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: deploy-my-message-project
+  name: deploy-my-message
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
