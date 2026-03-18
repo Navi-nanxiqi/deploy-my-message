@@ -49,8 +49,14 @@ service:
 
 ingress:
   className: nginx
-  annotations: {}
   host: "test.deploy.com"
+  annotations:
+    nginx.ingress.kubernetes.io/app-root: /web/
   paths:
-    - path: /deploy-my-message
+    - path: /web
       pathType: Prefix
+    - path: /
+      pathType: Prefix
+  # paths:
+  #   - path: /deploy-my-message
+  #     pathType: Prefix
