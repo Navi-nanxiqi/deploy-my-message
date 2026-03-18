@@ -50,6 +50,7 @@ service:
 ingress:
   className: nginx
   annotations: {}
+  host: "test.deploy.com"
   paths:
     - path: /deploy-my-message
       pathType: Prefix
