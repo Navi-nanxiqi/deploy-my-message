@@ -25,7 +25,7 @@ spec:
           host: test.deploy.com
           annotations:
             nginx.ingress.kubernetes.io/use-regex: "true"
-            nginx.ingress.kubernetes.io/rewrite-target: /web$2
+            nginx.ingress.kubernetes.io/rewrite-target: /web/$2
           paths:
             - path: /test-deploy-my-message(/|$)(.*)
               pathType: ImplementationSpecific
