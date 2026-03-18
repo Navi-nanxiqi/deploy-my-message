@@ -3,6 +3,8 @@ kind: AppProject
 metadata:
   name: deploy-my-message
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   description: deploy-my-message
   sourceRepos:
