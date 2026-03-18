@@ -6,7 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  project: deploy-my-message
+  project: deploy-my-message-project
   source:
     repoURL: http://192.168.179.131:10880/nanxiqi/deploy-my-message.git
     targetRevision: main
