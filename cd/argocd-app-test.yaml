@@ -21,7 +21,7 @@ spec:
             pullPolicy: IfNotPresent
         ingress:
           paths:
-            - path: /test-deploy-my-message(/|$)(.*)
+            - path: /test-deploy-my-message
               pathType: Prefix
   destination:
     server: https://kubernetes.default.svc
