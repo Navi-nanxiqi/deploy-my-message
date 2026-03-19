@@ -22,12 +22,13 @@ spec:
             repository: 192.168.179.131:5000/deploy-my-message
             pullPolicy: IfNotPresent
         ingress:
+          host: test.deploy.com
           annotations:
             nginx.ingress.kubernetes.io/use-regex: "true"
             nginx.ingress.kubernetes.io/rewrite-target: /web/$2
           paths:
-            - path: /deploy-my-message
-              pathType: Prefix
+            - path: /deploy-my-message(/|$)(.*)
+              pathType: ImplementationSpecific
   destination:
     server: https://kubernetes.default.svc
     namespace: deploy-my-message-prod

@@ -8,7 +8,7 @@ import {
 } from "@/views/index";
 
 const router = createRouter({
-    history: createWebHashHistory("/web/"),
+    history: createWebHashHistory(),
     routes: [
         { path: "/login", name: "login", component: Login },
         { path: "/register", name: "register", component: Register },
