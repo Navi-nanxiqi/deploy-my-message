@@ -6,7 +6,7 @@ import path from "node:path";
 export default defineConfig({
     // vite插件运行时候，添加插件 tailwindcss 进行解析样式类
     plugins: [ vue(), tailwindcss() ],
-    base: "/web/",
+    base: "./",
     server: {
         host: true,
         port: 5173,

@@ -16,7 +16,7 @@ async function bootstrap() {
     app.setGlobalPrefix('api');
 
     const config = app.get(ConfigService);
-    const port = config.get<number>('app.port', 3001);
+    const port = config.get<number>('app.port', 3000);
     const logLevel = config.get<string>('app.logLevel', 'log');
     const secret = config.get<string>('app.secret');
 

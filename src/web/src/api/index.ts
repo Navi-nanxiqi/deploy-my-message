@@ -5,7 +5,7 @@ import axios from "axios";
 // const port = window.location.port;
 // const fullAddress = `${hostName}:${port}`;
 // const url = `${protocal}//${fullAddress}/${import.meta.env.VITE_SERVER_NAME}`;
-const url = "http://localhost:3001/api";
+const url = "http://localhost:3000/api";
 
 export const http = axios.create({
     baseURL: url,
