@@ -27,8 +27,8 @@ spec:
             nginx.ingress.kubernetes.io/use-regex: "true"
             nginx.ingress.kubernetes.io/rewrite-target: /web/$2
           paths:
-            - path: /test-deploy-my-message(/|$)(.*)
-              pathType: ImplementationSpecific
+            - path: /test-deploy-my-message
+              pathType: Prefix
   destination:
     server: https://kubernetes.default.svc
     namespace: deploy-my-message-test
